@@ -2,6 +2,7 @@ package AC01
 
 import (
 	"log"
+	"time"
 
 	"github.com/tarm/serial"
 )
@@ -73,7 +74,56 @@ func NewMsgGetReaderInformation() []byte {
 	ret = append(ret, 0x01) //PL(LSB)
 	ret = append(ret, 0x02) //Arg
 	ret = append(ret, 0x7E) //endmark
-	crc := crc16(ret)
+
+	tmp := make([]byte, len(ret))
+	copy(tmp, ret)
+
+	crc := crc16(tmp)
+	var h, l uint8 = uint8(crc >> 8), uint8(crc & 0xff)
+	ret = append(ret, h)
+	ret = append(ret, l)
+	return ret
+}
+
+func NewMsgStartRead() []byte {
+	ret := []byte{}
+
+	ret = append(ret, 0xBB) //preamble
+	ret = append(ret, 0x00) //msg type
+	ret = append(ret, 0x36) //code
+	ret = append(ret, 0x00) //PL(MSB)
+	ret = append(ret, 0x05) //PL(LSB)
+	ret = append(ret, 0x02) //Reserve
+	ret = append(ret, 0x00) //MTNU
+	ret = append(ret, 0x00) //MTIME in seconds
+	ret = append(ret, 0x00) //RC(MSB)
+	ret = append(ret, 0x64) //RC(LSB)
+	ret = append(ret, 0x7E) //endmark
+
+	tmp := make([]byte, len(ret))
+	copy(tmp, ret)
+
+	crc := crc16(tmp)
+	var h, l uint8 = uint8(crc >> 8), uint8(crc & 0xff)
+	ret = append(ret, h)
+	ret = append(ret, l)
+	return ret
+}
+
+func NewMsgStopRead() []byte {
+	ret := []byte{}
+
+	ret = append(ret, 0xBB) //preamble
+	ret = append(ret, 0x00) //msg type
+	ret = append(ret, 0x37) //code
+	ret = append(ret, 0x00) //PL(MSB)
+	ret = append(ret, 0x00) //PL(LSB)
+	ret = append(ret, 0x7E) //endmark
+
+	tmp := make([]byte, len(ret))
+	copy(tmp, ret)
+
+	crc := crc16(tmp)
 	var h, l uint8 = uint8(crc >> 8), uint8(crc & 0xff)
 	ret = append(ret, h)
 	ret = append(ret, l)
@@ -100,4 +150,48 @@ func SendGetReaderInformation() {
 		log.Fatal(err)
 	}
 	log.Printf("%q", buf[:n])
+}
+
+func DoScan() {
+	mstart := NewMsgStartRead()
+	mstop := NewMsgStopRead()
+
+	c := &serial.Config{Name: "/dev/ttyUSB0", Baud: 115200}
+	s, err := serial.OpenPort(c)
+	if err != nil {
+		log.Fatal(err)
+	}
+	read := true
+
+	go func() {
+		timer := time.NewTimer(time.Second * 2)
+		<-timer.C
+		log.Println("Timer expired")
+
+		log.Printf("write - %q", mstop)
+		_, err := s.Write(mstop)
+		if err != nil {
+			log.Fatal(err)
+		}
+		read = false
+	}()
+
+	log.Printf("write - %q", mstart)
+	n, err := s.Write(mstart)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for {
+		if !read {
+			break
+		}
+
+		buf := make([]byte, 128)
+		n, err = s.Read(buf)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("read - %q", buf[:n])
+	}
 }
