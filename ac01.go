@@ -1,8 +1,11 @@
 package AC01
 
 import (
+	"fmt"
 	"log"
 	"time"
+
+	"encoding/hex"
 
 	"github.com/tarm/serial"
 )
@@ -78,7 +81,7 @@ func NewMsgGetReaderInformation() []byte {
 	tmp := make([]byte, len(ret))
 	copy(tmp, ret)
 
-	crc := crc16(tmp)
+	crc := crc16(tmp[1:])
 	var h, l uint8 = uint8(crc >> 8), uint8(crc & 0xff)
 	ret = append(ret, h)
 	ret = append(ret, l)
@@ -103,7 +106,23 @@ func NewMsgStartRead() []byte {
 	tmp := make([]byte, len(ret))
 	copy(tmp, ret)
 
-	crc := crc16(tmp)
+	crc := crc16(tmp[1:])
+	var h, l uint8 = uint8(crc >> 8), uint8(crc & 0xff)
+	ret = append(ret, h)
+	ret = append(ret, l)
+	return ret
+}
+
+func NewMsgStartRead2() []byte {
+	ret := []byte{
+		0xBB, 0x00, 0x36, 0x00, 0x05,
+		0x02, 0x00, 0x00, 0x00, 0x64,
+		0x7E}
+
+	tmp := make([]byte, len(ret))
+	copy(tmp, ret)
+
+	crc := crc16(tmp[1:])
 	var h, l uint8 = uint8(crc >> 8), uint8(crc & 0xff)
 	ret = append(ret, h)
 	ret = append(ret, l)
@@ -123,7 +142,7 @@ func NewMsgStopRead() []byte {
 	tmp := make([]byte, len(ret))
 	copy(tmp, ret)
 
-	crc := crc16(tmp)
+	crc := crc16(tmp[1:])
 	var h, l uint8 = uint8(crc >> 8), uint8(crc & 0xff)
 	ret = append(ret, h)
 	ret = append(ret, l)
@@ -152,6 +171,10 @@ func SendGetReaderInformation() {
 	log.Printf("%q", buf[:n])
 }
 
+func printHex(bs []byte) {
+	fmt.Println(hex.Dump(bs))
+}
+
 func DoScan() {
 	mstart := NewMsgStartRead()
 	mstop := NewMsgStopRead()
@@ -168,7 +191,7 @@ func DoScan() {
 		<-timer.C
 		log.Println("Timer expired")
 
-		log.Printf("write - %q", mstop)
+		printHex(mstop)
 		_, err := s.Write(mstop)
 		if err != nil {
 			log.Fatal(err)
@@ -176,7 +199,7 @@ func DoScan() {
 		read = false
 	}()
 
-	log.Printf("write - %q", mstart)
+	printHex(mstart)
 	n, err := s.Write(mstart)
 	if err != nil {
 		log.Fatal(err)
@@ -192,6 +215,7 @@ func DoScan() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("read - %q", buf[:n])
+
+		printHex(buf[:n])
 	}
 }

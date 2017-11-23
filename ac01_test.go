@@ -1,8 +1,12 @@
 package AC01
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSendGetInfo(t *testing.T) {
-	//	SendGetReaderInformation()
-	DoScan()
+	//		SendGetReaderInformation()
+	msg := NewMsgStartRead2()
+	printHex(msg)
+	//	DoScan()
 }
