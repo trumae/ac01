@@ -11,5 +11,5 @@ func main() {
 	flag.StringVar(&dev, "dev", "/dev/ttyUSB0", "device")
 	flag.Parse()
 
-	ac01.DoScan()
+	ac01.DoScan(5)
 }
