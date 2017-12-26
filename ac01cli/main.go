@@ -1,6 +1,9 @@
 package main
 
-import "flag"
+import (
+	"flag"
+	"github.com/trumae/ac01"
+)
 
 func main() {
 	dev := "/dev/ttyUSB0"
@@ -8,4 +11,5 @@ func main() {
 	flag.StringVar(&dev, "dev", "/dev/ttyUSB0", "device")
 	flag.Parse()
 
+	ac01.DoScan()
 }
