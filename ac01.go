@@ -120,14 +120,15 @@ func printHex(bs []byte) {
 	fmt.Println(hex.Dump(bs))
 }
 
-func DoScan(sec int) {
+func DoScan(sec int) ([]byte, error) {
 	mstart := NewMsgStartRead()
 	mstop := NewMsgStopRead()
 
 	c := &serial.Config{Name: "/dev/ttyUSB0", Baud: 115200}
 	s, err := serial.OpenPort(c)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return nil, err
 	}
 	read := true
 
@@ -139,7 +140,7 @@ func DoScan(sec int) {
 		printHex(mstop)
 		_, err := s.Write(mstop)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 		read = false
 	}()
@@ -147,9 +148,11 @@ func DoScan(sec int) {
 	printHex(mstart)
 	n, err := s.Write(mstart)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return nil, err
 	}
 
+	ret := []byte{}
 	for {
 		if !read {
 			break
@@ -158,9 +161,13 @@ func DoScan(sec int) {
 		buf := make([]byte, 128)
 		n, err = s.Read(buf)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			return nil, err
 		}
 
+		ret = append(ret, buf[:n]...)
 		printHex(buf[:n])
 	}
+
+	return ret, nil
 }
